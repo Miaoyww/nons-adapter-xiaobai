@@ -3,7 +3,7 @@ import { copyFile, mkdir, readFile, writeFile, stat } from 'node:fs/promises'
 import { resolve, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 const project = resolve(dirname(fileURLToPath(import.meta.url)), '..')
-const root = resolve(project, '../..')
+const root = process.env.NONS_ROOT ? resolve(process.env.NONS_ROOT) : resolve(project, '../..')
 const target = resolve(project, 'target')
 const build = spawnSync(
   'cargo',
@@ -66,3 +66,4 @@ for (const pkg of JSON.parse(metadata.stdout)
 }
 await writeFile(resolve(destination, 'LICENSE.dependencies'), notices.join('\n\n'))
 console.log(`Built Rust audio provider: ${resolve(dist, 'adapter.component.wasm')}`)
+
