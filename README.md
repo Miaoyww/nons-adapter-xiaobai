@@ -9,7 +9,7 @@ node scripts/build.mjs
 cargo test --manifest-path Cargo.toml --locked
 ```
 
-构建需要 `cargo-component` 和 Rust `wasm32-unknown-unknown` 目标，产物为 `dist/adapter.component.wasm` 并复制到应用的 bundled-adapters。上游许可见 LICENSE.musicdl，构建同时生成依赖许可告知。
+构建需要 `cargo-component` 和 Rust `wasm32-unknown-unknown` 目标，产物为 `dist/adapter.component.wasm` 并复制到应用的 bundled-adapters。上游许可见 licenses/musicdl/License，构建同时生成依赖许可告知。
 
 真实宿主在线验收（构建小白音乐 Component 后运行）：
 
@@ -20,3 +20,7 @@ cargo test --manifest-path Cargo.toml --locked
 推送到 `main` 或提交 Pull Request 会运行 GitHub Actions；推送 `v*` 标签会在测试和 Component 构建通过后发布可直接安装的 ZIP 及 SHA-256 校验文件。
 
 该验收使用独立临时数据库及空账号，检查小白音乐对 QQ 版 Lemon（`000akynZ2Rbro5`）的真实 WASM／Host 调用、实际提供器归属、320 kbps 完整资源，以及禁止降级时拒绝 Hi-Res 请求。它不代表全部歌曲、其他三平台或桌面出声已通过实机验收。
+
+## 项目许可证
+
+本项目代码采用 [MIT](License)。musicdl 的 PolyForm Noncommercial 1.0.0 条款保留在 `licenses/musicdl/License`，构建依赖告知位于产物的 `licenses/dependencies/License`；这些上游条款不被项目 MIT 授权替代。

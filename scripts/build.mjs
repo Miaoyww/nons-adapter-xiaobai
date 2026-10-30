@@ -48,7 +48,7 @@ const metadata = spawnSync(
 )
 if (metadata.error) throw metadata.error
 if (metadata.status !== 0) throw new Error(metadata.stderr)
-const notices = [await readFile(resolve(project, 'LICENSE.musicdl'), 'utf8')]
+const notices = [await readFile(resolve(project, 'licenses/musicdl/License'), 'utf8')]
 for (const pkg of JSON.parse(metadata.stdout)
   .packages.filter((pkg) => pkg.source)
   .sort((a, b) => a.name.localeCompare(b.name))) {
@@ -64,6 +64,11 @@ for (const pkg of JSON.parse(metadata.stdout)
       notices.push(await readFile(resolve(directory, name), 'utf8'))
   }
 }
-await writeFile(resolve(destination, 'LICENSE.dependencies'), notices.join('\n\n'))
+await mkdir(resolve(destination, 'licenses/dependencies'), { recursive: true })
+await writeFile(resolve(destination, 'licenses/dependencies/License'), notices.join('\n\n'))
 console.log(`Built Rust audio provider: ${resolve(dist, 'adapter.component.wasm')}`)
 
+
+await writeFile(resolve(destination, 'License'), await readFile(resolve(project, 'License')))
+await mkdir(resolve(destination, 'licenses/musicdl'), { recursive: true })
+await copyFile(resolve(project, 'licenses/musicdl/License'), resolve(destination, 'licenses/musicdl/License'))

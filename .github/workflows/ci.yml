@@ -43,7 +43,9 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/v')
         run: |
           mkdir -p workspace/out
-          (cd workspace/app/src-tauri/bundled-adapters && zip -qr "../../../out/nsa-xiaobai-${GITHUB_REF_NAME}.zip" xiaobai)
+          test -f workspace/app/src-tauri/bundled-adapters/xiaobai/manifest.json
+          test -f workspace/app/src-tauri/bundled-adapters/xiaobai/License
+          (cd workspace/app/src-tauri/bundled-adapters/xiaobai && zip -qr "../../../../out/xiaobai-${GITHUB_REF_NAME}.zip" .)
           (cd workspace/out && sha256sum *.zip > SHA256SUMS.txt)
       - uses: actions/upload-artifact@v4
         if: startsWith(github.ref, 'refs/tags/v')
