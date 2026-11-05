@@ -1,8 +1,8 @@
-use crate::{AdapterResult, Http, Request, Response};
+use crate::{AdapterResult, HostRequest, Http, Request, Response};
 
 wit_bindgen::generate!({
-    path: ["../../plugins/wit", "../../packages/adapter-host/wit"],
-    inline: "package nons:xiaobai; world adapter { import nons:host/transport@1.0.0; export initialize: func() -> result<_, string>; export shutdown: func() -> result<_, string>; export call: func(method: string, args: string) -> result<string, string>; }",
+    path: ["vendor/wit/host", "vendor/wit/plugin"],
+    inline: "package nons:xiaobai; world adapter { import nons:host/transport@1.1.0; import nons:plugin/host@1.0.0; export initialize: func() -> result<_, string>; export shutdown: func() -> result<_, string>; export call: func(method: string, args: string) -> result<string, string>; }",
     world: "nons:xiaobai/adapter",
     generate_all,
 });
@@ -11,6 +11,7 @@ struct Host;
 impl Http for Host {
     fn send(&self, request: Request) -> AdapterResult<Response> {
         use nons::host::transport as host;
+        let request = HostRequest::from(request);
         let headers = request
             .headers
             .into_iter()
@@ -21,7 +22,8 @@ impl Http for Host {
             method: request.method.into(),
             headers,
             body: request.body,
-            timeout_ms: 4000,
+            follow_redirects: request.follow_redirects,
+            timeout_ms: request.timeout_ms,
         })
         .map_err(|error| match error.as_str() {
             "cancelled" => "cancelled",
@@ -31,6 +33,7 @@ impl Http for Host {
             _ => "network",
         })?;
         Ok(Response {
+            url: response.url,
             status: response.status,
             headers: response
                 .headers
@@ -49,7 +52,29 @@ impl Guest for Adapter {
         Ok(())
     }
     fn call(method: String, args: String) -> std::result::Result<String, String> {
-        Ok(crate::call(&Host, &method, &args))
+        let result = crate::call(&Host, &method, &args);
+        report(&result);
+        Ok(result)
     }
 }
 export!(Adapter);
+
+fn report(result: &str) {
+    let value: serde_json::Value = match serde_json::from_str(result) {
+        Ok(value) => value,
+        Err(_) => return,
+    };
+    if value["status"] != "error" {
+        return;
+    }
+    let code = value["data"]["code"].as_str().unwrap_or("internal");
+    let class = match code {
+        "network" | "timeout" | "cancelled" => "network",
+        "rateLimited" | "permissionDenied" | "notFound" => "upstream",
+        _ => "protocol",
+    };
+    let _ = nons::plugin::host::call(
+        "diagnostic.report",
+        &serde_json::json!({"stage":"music.call","class":class,"code":code}).to_string(),
+    );
+}

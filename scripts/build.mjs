@@ -1,74 +1,98 @@
-import { spawnSync } from 'node:child_process'
-import { copyFile, mkdir, readFile, writeFile, stat } from 'node:fs/promises'
-import { resolve, dirname } from 'node:path'
-import { fileURLToPath } from 'node:url'
-const project = resolve(dirname(fileURLToPath(import.meta.url)), '..')
-const root = process.env.NONS_ROOT ? resolve(process.env.NONS_ROOT) : resolve(project, '../..')
-const target = resolve(project, 'target')
+import { spawnSync } from "node:child_process";
+import { copyFile, mkdir, readFile, writeFile, stat } from "node:fs/promises";
+import { resolve, dirname } from "node:path";
+import { fileURLToPath } from "node:url";
+const project = resolve(dirname(fileURLToPath(import.meta.url)), "..");
+const root = process.env.NONS_ROOT
+  ? resolve(process.env.NONS_ROOT)
+  : resolve(project, "../..");
+const target = resolve(project, "target");
 const build = spawnSync(
-  'cargo',
+  "cargo",
   [
-    'component',
-    'build',
-    '--manifest-path',
-    resolve(project, 'Cargo.toml'),
-    '--target',
-    'wasm32-unknown-unknown',
-    '--release',
-    '--locked'
+    "component",
+    "build",
+    "--manifest-path",
+    resolve(project, "Cargo.toml"),
+    "--target",
+    "wasm32-unknown-unknown",
+    "--release",
+    "--locked",
   ],
-  { cwd: root, stdio: 'inherit', env: { ...process.env, CARGO_TARGET_DIR: target } }
-)
-if (build.error) throw build.error
-if (build.status !== 0) process.exit(build.status ?? 1)
-const wasm = resolve(target, 'wasm32-unknown-unknown/release/nons_adapter_xiaobai.wasm')
+  {
+    cwd: root,
+    stdio: "inherit",
+    env: { ...process.env, CARGO_TARGET_DIR: target },
+  },
+);
+if (build.error) throw build.error;
+if (build.status !== 0) process.exit(build.status ?? 1);
+const wasm = resolve(
+  target,
+  "wasm32-unknown-unknown/release/nons_adapter_xiaobai.wasm",
+);
 if ((await stat(wasm)).size > 32 * 1024 * 1024)
-  throw new Error('Audio provider exceeds component size limit')
-const dist = resolve(project, 'dist')
-const destination = resolve(root, 'app/src-tauri/bundled-adapters/xiaobai')
-await mkdir(dist, { recursive: true })
-await mkdir(destination, { recursive: true })
-await copyFile(wasm, resolve(dist, 'adapter.component.wasm'))
-await copyFile(wasm, resolve(destination, 'adapter.component.wasm'))
-await copyFile(resolve(project, 'manifest.json'), resolve(destination, 'manifest.json'))
+  throw new Error("Audio provider exceeds component size limit");
+const dist = resolve(project, "dist");
+const destination = resolve(root, "app/src-tauri/bundled-adapters/xiaobai");
+await mkdir(dist, { recursive: true });
+await mkdir(destination, { recursive: true });
+await copyFile(wasm, resolve(dist, "adapter.component.wasm"));
+await copyFile(wasm, resolve(destination, "adapter.component.wasm"));
+await copyFile(
+  resolve(project, "manifest.json"),
+  resolve(destination, "manifest.json"),
+);
 // Cargo metadata identifies only production dependencies of the WASM target.
 const metadata = spawnSync(
-  'cargo',
+  "cargo",
   [
-    'metadata',
-    '--manifest-path',
-    resolve(project, 'Cargo.toml'),
-    '--locked',
-    '--format-version',
-    '1',
-    '--filter-platform',
-    'wasm32-unknown-unknown'
+    "metadata",
+    "--manifest-path",
+    resolve(project, "Cargo.toml"),
+    "--locked",
+    "--format-version",
+    "1",
+    "--filter-platform",
+    "wasm32-unknown-unknown",
   ],
-  { encoding: 'utf8', env: { ...process.env, CARGO_TARGET_DIR: target } }
-)
-if (metadata.error) throw metadata.error
-if (metadata.status !== 0) throw new Error(metadata.stderr)
-const notices = [await readFile(resolve(project, 'licenses/musicdl/License'), 'utf8')]
+  { encoding: "utf8", env: { ...process.env, CARGO_TARGET_DIR: target } },
+);
+if (metadata.error) throw metadata.error;
+if (metadata.status !== 0) throw new Error(metadata.stderr);
+const notices = [
+  await readFile(resolve(project, "licenses/musicdl/License"), "utf8"),
+];
 for (const pkg of JSON.parse(metadata.stdout)
   .packages.filter((pkg) => pkg.source)
   .sort((a, b) => a.name.localeCompare(b.name))) {
   notices.push(
-    `${pkg.name}@${pkg.version} (${pkg.license ?? 'see upstream'})\n${pkg.repository ?? ''}`
-  )
-  const directory = dirname(pkg.manifest_path)
-  const { readdir } = await import('node:fs/promises')
+    `${pkg.name}@${pkg.version} (${pkg.license ?? "see upstream"})\n${pkg.repository ?? ""}`,
+  );
+  const directory = dirname(pkg.manifest_path);
+  const { readdir } = await import("node:fs/promises");
   for (const name of (await readdir(directory)).filter((name) =>
-    /^(license|copying|notice)([.-]|$)/i.test(name)
+    /^(license|copying|notice)([.-]|$)/i.test(name),
   )) {
     if ((await stat(resolve(directory, name))).isFile())
-      notices.push(await readFile(resolve(directory, name), 'utf8'))
+      notices.push(await readFile(resolve(directory, name), "utf8"));
   }
 }
-await mkdir(resolve(destination, 'licenses/dependencies'), { recursive: true })
-await writeFile(resolve(destination, 'licenses/dependencies/License'), notices.join('\n\n'))
-console.log(`Built Rust audio provider: ${resolve(dist, 'adapter.component.wasm')}`)
+await mkdir(resolve(destination, "licenses/dependencies"), { recursive: true });
+await writeFile(
+  resolve(destination, "licenses/dependencies/License"),
+  notices.join("\n\n"),
+);
+console.log(
+  `Built Rust audio provider: ${resolve(dist, "adapter.component.wasm")}`,
+);
 
-
-await writeFile(resolve(destination, 'License'), await readFile(resolve(project, 'License')))
-await mkdir(resolve(destination, 'licenses/musicdl'), { recursive: true })
-await copyFile(resolve(project, 'licenses/musicdl/License'), resolve(destination, 'licenses/musicdl/License'))
+await writeFile(
+  resolve(destination, "License"),
+  await readFile(resolve(project, "License")),
+);
+await mkdir(resolve(destination, "licenses/musicdl"), { recursive: true });
+await copyFile(
+  resolve(project, "licenses/musicdl/License"),
+  resolve(destination, "licenses/musicdl/License"),
+);
